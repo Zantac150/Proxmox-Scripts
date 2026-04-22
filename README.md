@@ -14,6 +14,9 @@ A collection of Bash scripts for automating and managing a [Proxmox VE](https://
 | [`lxc-management/create-lxc.sh`](#lxc-container-creator) | Create an LXC container from a template |
 | [`lxc-management/bulk-update.sh`](#bulk-update) | Update all running LXC containers and/or QEMU VMs |
 | [`backup/backup-config.sh`](#config-backup) | Back up Proxmox node configuration to local or remote destination |
+| [`monitoring/check-node-health.sh`](#node-health-check) | Host observability checks for disk, memory, load, storage, and core services |
+| [`monitoring/check-network-health.sh`](#network-health-check) | Validate routing, link state, DNS resolution, and external connectivity |
+| [`monitoring/recover-services.sh`](#service-recovery) | Detect unhealthy Proxmox services and restart them automatically |
 
 ---
 
@@ -169,6 +172,91 @@ sudo ./backup/backup-config.sh --remote backup@192.168.1.10:/backups/proxmox
 ```
 
 Options: `--dest`, `--remote`, `--keep`, `--no-ssh-keys`, `--no-compress`
+
+---
+
+### Node Health Check
+
+**`monitoring/check-node-health.sh`**
+
+Performs host-level observability checks for common Proxmox failure modes:
+
+- Filesystem and inode pressure
+- Memory/swap pressure and 1-minute load threshold
+- Proxmox storage pool health (`pvesm status`)
+- Core Proxmox service health (`pveproxy`, `pvedaemon`, `pvestatd`, `pve-cluster`)
+- Optional ZFS pool and cluster quorum checks
+- Optional restart of unhealthy core services
+
+```bash
+chmod +x monitoring/check-node-health.sh
+
+# Run standard checks:
+sudo ./monitoring/check-node-health.sh
+
+# Auto-restart unhealthy core services and use custom thresholds:
+sudo ./monitoring/check-node-health.sh \
+  --restart-unhealthy \
+  --disk-threshold 90 \
+  --memory-threshold 92 \
+  --load-factor 2.0
+```
+
+Options: `--disk-threshold`, `--inode-threshold`, `--memory-threshold`, `--swap-threshold`, `--load-factor`, `--restart-unhealthy`, `--skip-storage`, `--skip-zfs`, `--skip-cluster`
+
+---
+
+### Network Health Check
+
+**`monitoring/check-network-health.sh`**
+
+Validates core networking paths used by Proxmox hosts, LXCs, and VMs:
+
+- Default route and gateway reachability
+- Interface and bridge link state
+- Resolver reachability and DNS lookup validation
+- External target reachability and latency checks
+
+```bash
+chmod +x monitoring/check-network-health.sh
+
+# Default checks:
+sudo ./monitoring/check-network-health.sh
+
+# Custom target/domain and stricter latency warning:
+sudo ./monitoring/check-network-health.sh \
+  --target 8.8.8.8 \
+  --dns-domain github.com \
+  --latency-warn-ms 60
+```
+
+Options: `--target`, `--dns-domain`, `--count`, `--latency-warn-ms`, `--skip-external`
+
+---
+
+### Service Recovery
+
+**`monitoring/recover-services.sh`**
+
+Detects unhealthy Proxmox systemd services and performs controlled restart attempts.
+
+```bash
+chmod +x monitoring/recover-services.sh
+
+# Recover default core services:
+sudo ./monitoring/recover-services.sh
+
+# Check-only mode (no restarts):
+sudo ./monitoring/recover-services.sh --check-only
+
+# Custom service list, retries, and dry-run:
+sudo ./monitoring/recover-services.sh \
+  --services pveproxy,pvedaemon,pvestatd,pve-cluster,corosync \
+  --max-retries 3 \
+  --dry-run
+```
+
+Options: `--services`, `--max-retries`, `--dry-run`, `--check-only`
 
 ---
 
