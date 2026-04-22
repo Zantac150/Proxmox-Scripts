@@ -257,7 +257,7 @@ check_cluster() {
     return
   fi
 
-  if grep -q "Quorate:\s*Yes" <<< "$status"; then
+  if grep -q "Quorate:[[:space:]]*Yes" <<< "$status"; then
     ok "Cluster quorum present."
   elif grep -q "No cluster network" <<< "$status"; then
     info "Node is not in a cluster (standalone)."
