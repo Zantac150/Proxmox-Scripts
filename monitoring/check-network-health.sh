@@ -119,7 +119,7 @@ check_bridge_and_links() {
     else
       inc_warn "Interface ${ifname} state is ${state}"
     fi
-  done < <(ip -br link | awk '/^(vmbr|bond|eno|ens|eth)/ {print $1, $2}')
+  done < <(ip -br link | awk '$1 != "lo" {print $1, $2}')
 }
 
 check_dns() {

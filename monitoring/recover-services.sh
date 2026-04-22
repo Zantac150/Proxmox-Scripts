@@ -16,7 +16,7 @@
 # Options:
 #       --services <LIST>          Comma-separated services to check
 #                                  (default: pveproxy,pvedaemon,pvestatd,pve-cluster)
-#       --max-retries <N>          Restart attempts per unhealthy service (default: 2)
+#       --max-retries <N>          Restart attempts per unhealthy service (default: 2, can be 0)
 #       --dry-run                  Print actions only, do not restart
 #       --check-only               Detect unhealthy services without restarting
 #   -h, --help                     Show this help message
@@ -57,7 +57,7 @@ parse_args() {
     esac
   done
 
-  [[ "$MAX_RETRIES" =~ ^[1-9][0-9]*$ ]] || error "--max-retries must be a positive integer."
+  [[ "$MAX_RETRIES" =~ ^[0-9]+$ ]] || error "--max-retries must be a non-negative integer."
 }
 
 service_state() {
