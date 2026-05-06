@@ -1,0 +1,147 @@
+# ==============================================================================
+# sentry.conf.example
+# Proxmox Sentry – example configuration file
+#
+# Copy this file to sentry.conf and fill in your values.
+# The agent reads this file at startup and on SIGHUP reload.
+# ==============================================================================
+
+# ── Proxmox API connection ─────────────────────────────────────────────────────
+[proxmox]
+# Hostname or IP of the Proxmox node (or VIP for a cluster)
+host        = 192.168.1.10
+
+# Proxmox user in the form user@realm
+# Use an API token instead of a plain password when possible:
+#   user = monitoring@pve!sentry-token
+#   token_name = sentry-token
+#   token_value = xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+user        = root@pam
+password    =
+
+# API token (recommended over password; leave empty to use password)
+token_name  =
+token_value =
+
+# Set to true to skip TLS certificate verification (self-signed cert)
+verify_ssl  = false
+
+# ── Sentry agent behaviour ─────────────────────────────────────────────────────
+[sentry]
+# How often (in seconds) the main monitoring loop runs
+interval_seconds    = 300
+
+# Number of days of metric history used to build ML baselines
+baseline_days       = 7
+
+# Path for structured JSON log file (separate from journald)
+log_file            = /var/log/sentry/sentry.log
+
+# SQLite database path for metric history and alert state
+db_file             = /var/lib/sentry/sentry.db
+
+# Isolation Forest contamination ratio — fraction of expected anomalies
+# Range: 0.01 – 0.50 (lower = fewer but higher-confidence alerts)
+anomaly_threshold   = 0.10
+
+# Minimum severity level to trigger an alert: info | warning | critical
+min_alert_severity  = warning
+
+# Comma-separated list of container/VM IDs to exclude from all checks
+# Example: exclude_ids = 100,101
+exclude_ids         =
+
+# ── Alerting channels ──────────────────────────────────────────────────────────
+[alerts]
+# Comma-separated list of enabled channels.
+# Available: email, pushover, webhook, syslog
+channels = email,pushover
+
+# Minimum seconds between repeated identical alerts (deduplication window)
+dedup_seconds   = 3600
+
+# ── Email channel ──────────────────────────────────────────────────────────────
+[email]
+enabled     = false
+smtp_host   = localhost
+smtp_port   = 25
+# Use TLS (STARTTLS on port 587)
+use_tls     = false
+smtp_user   =
+smtp_pass   =
+from        = sentry@proxmox.local
+# Multiple recipients: comma-separated
+to          = admin@example.com
+# Optional subject prefix
+subject_prefix = [Proxmox Sentry]
+
+# ── Pushover channel ───────────────────────────────────────────────────────────
+[pushover]
+enabled     = false
+# Create an application at https://pushover.net to get api_token
+api_token   =
+user_key    =
+# Priority: -2 lowest / -1 quiet / 0 normal / 1 high / 2 emergency
+priority    = 0
+
+# ── Webhook channel (Slack / Discord / Teams / custom) ────────────────────────
+[webhook]
+enabled     = false
+# Incoming-webhook URL from your platform
+url         =
+# Optional: secret for HMAC-SHA256 signature header
+secret      =
+# Header name for the signature, e.g. X-Slack-Signature
+signature_header =
+# Payload format: slack | discord | teams | json (generic JSON)
+format      = json
+# Minimum severity to send to this webhook: info | warning | critical
+min_severity = warning
+
+# ── Syslog channel ─────────────────────────────────────────────────────────────
+[syslog]
+enabled     = false
+# 'local' = Unix socket (rsyslog/journald)  |  'remote' = UDP/TCP syslog
+mode        = local
+remote_host = 192.168.1.20
+remote_port = 514
+# Protocol for remote: udp | tcp
+protocol    = udp
+# syslog facility: LOG_USER LOG_LOCAL0 … LOG_LOCAL7
+facility    = LOG_LOCAL0
+# syslog tag prepended to every message
+tag         = sentry
+
+# ── Vulnerability scanner (Trivy) ─────────────────────────────────────────────
+[vuln_scanner]
+enabled             = true
+# How often to run full Trivy scans (in seconds); 0 = every main loop cycle
+scan_interval_seconds = 86400
+# Severity levels to report: UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL
+min_severity        = HIGH
+# Ignore unfixed vulnerabilities
+ignore_unfixed      = true
+# Path to trivy binary (default: from PATH)
+trivy_bin           = trivy
+
+# ── Network monitor ────────────────────────────────────────────────────────────
+[network_monitor]
+enabled                 = true
+# Interfaces to watch (comma-separated); empty = all non-loopback
+interfaces              =
+# Ports that are always considered suspicious if listening externally
+suspicious_ports        = 4444,1337,31337,6666,9001
+# Alert if a container opens a connection to a new external host (first time)
+alert_new_external_host = true
+
+# ── Config auditor ─────────────────────────────────────────────────────────────
+[config_auditor]
+enabled             = true
+# Alert on privileged containers
+check_privileged    = true
+# Alert if host device pass-through is configured
+check_host_devices  = true
+# Alert if the root filesystem is world-writable
+check_rootfs_perms  = true
+# Minimum score (0-100) below which a config is flagged
+min_score_threshold = 70

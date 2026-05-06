@@ -1,10 +1,12 @@
 # Proxmox-Scripts
 
-A collection of Bash scripts for automating and managing a [Proxmox VE](https://www.proxmox.com/en/proxmox-virtual-environment/overview) home lab or small environment. Each script is self-contained, documented, and designed to be run directly on a Proxmox host.
+A collection of Bash scripts and Python modules for automating, managing, and **proactively securing** a [Proxmox VE](https://www.proxmox.com/en/proxmox-virtual-environment/overview) home lab or small environment.
 
 ---
 
 ## Contents
+
+### Management Scripts
 
 | Script | Description |
 |--------|-------------|
@@ -18,6 +20,24 @@ A collection of Bash scripts for automating and managing a [Proxmox VE](https://
 | [`monitoring/check-network-health.sh`](#network-health-check) | Validate routing, link state, DNS resolution, and external connectivity |
 | [`monitoring/recover-services.sh`](#service-recovery) | Detect unhealthy Proxmox services and restart them automatically |
 
+### Proxmox Sentry – AI Security Monitoring
+
+| Component | Description |
+|-----------|-------------|
+| [`sentry/install-sentry-lxc.sh`](#proxmox-sentry) | One-command installer — creates and configures the Sentry LXC |
+| [`sentry/sentry-agent.py`](#proxmox-sentry) | Main orchestration daemon (scheduler, module runner, alert dispatcher) |
+| [`sentry/modules/baseline.py`](#sentry-modules) | Metric collection and scikit-learn ML baseline management |
+| [`sentry/modules/anomaly_detector.py`](#sentry-modules) | Isolation Forest anomaly detection with static threshold fallback |
+| [`sentry/modules/network_monitor.py`](#sentry-modules) | Network connection and traffic anomaly monitoring |
+| [`sentry/modules/vuln_scanner.py`](#sentry-modules) | Trivy vulnerability scanner integration for LXC/VM containers |
+| [`sentry/modules/config_auditor.py`](#sentry-modules) | Security-score-based LXC/VM configuration auditor |
+| [`sentry/modules/recommender.py`](#sentry-modules) | Rule-based remediation recommendation engine |
+| [`sentry/alerting/alertmanager.py`](#sentry-alerting) | Pluggable alert dispatcher with deduplication and severity filtering |
+| [`sentry/alerting/channels/email_channel.py`](#sentry-alerting) | SMTP email alerts |
+| [`sentry/alerting/channels/pushover_channel.py`](#sentry-alerting) | Pushover mobile push notifications |
+| [`sentry/alerting/channels/webhook_channel.py`](#sentry-alerting) | Generic webhook (Slack, Discord, Teams, custom JSON) |
+| [`sentry/alerting/channels/syslog_channel.py`](#sentry-alerting) | Syslog / remote log-platform integration (Graylog, Splunk, Loki) |
+
 ---
 
 ## Requirements
@@ -25,6 +45,13 @@ A collection of Bash scripts for automating and managing a [Proxmox VE](https://
 - Proxmox VE 7.x or 8.x
 - Scripts must be run as **root** on a Proxmox node
 - `bash` 4.0+
+
+### Sentry additional requirements (handled by installer)
+
+- Python 3.10+, pip, venv
+- [scikit-learn](https://scikit-learn.org/) 1.5+, numpy, pandas, requests, proxmoxer, schedule
+- [Trivy](https://aquasecurity.github.io/trivy/) (vulnerability scanner)
+- 2 GB RAM / 2 vCPU / 12 GB disk recommended for the Sentry LXC
 
 ---
 
@@ -257,6 +284,132 @@ sudo ./monitoring/recover-services.sh \
 ```
 
 Options: `--services`, `--max-retries`, `--dry-run`, `--check-only`
+
+---
+
+## Proxmox Sentry
+
+**`sentry/`** — AI-powered, Darktrace-inspired security monitoring and predictive alerting for Proxmox VE home labs.
+
+Sentry runs as a dedicated LXC container on your Proxmox node.  It continuously collects metrics, builds ML baselines, scans for vulnerabilities, audits container/VM configurations, monitors the network for anomalies, and alerts you before problems impact your lab.
+
+### Architecture
+
+```
+sentry/
+├── install-sentry-lxc.sh        ← run this first (Proxmox helper)
+├── sentry-agent.py              ← main daemon (systemd service)
+├── config/
+│   └── sentry.conf.example      ← annotated configuration template
+├── modules/
+│   ├── baseline.py              ← metric collection + SQLite storage + sklearn model fitting
+│   ├── anomaly_detector.py      ← Isolation Forest real-time anomaly detection
+│   ├── network_monitor.py       ← suspicious ports, new external hosts, traffic spikes
+│   ├── vuln_scanner.py          ← Trivy CVE scanning for LXC rootfs + host OS
+│   ├── config_auditor.py        ← security-score LXC/VM config audit via Proxmox API
+│   └── recommender.py           ← actionable remediation guidance
+└── alerting/
+    ├── alertmanager.py          ← dispatcher with dedup, throttle, severity filter
+    └── channels/
+        ├── email_channel.py     ← SMTP (plain + TLS/STARTTLS)
+        ├── pushover_channel.py  ← Pushover mobile push
+        ├── webhook_channel.py   ← Slack / Discord / Teams / generic JSON
+        └── syslog_channel.py    ← local rsyslog + remote UDP/TCP (Graylog, Splunk, Loki)
+```
+
+### Quick Start
+
+```bash
+# 1. On the Proxmox host — create and bootstrap the Sentry LXC (ID 900):
+chmod +x sentry/install-sentry-lxc.sh
+sudo ./sentry/install-sentry-lxc.sh --id 900 --name pve-sentry \
+  --ip 192.168.1.200/24 --gw 192.168.1.1
+
+# 2. Edit the configuration inside the container:
+pct exec 900 -- nano /opt/sentry/config/sentry.conf
+
+# 3. Start the agent:
+pct exec 900 -- systemctl start sentry-agent
+
+# 4. Watch logs:
+pct exec 900 -- journalctl -u sentry-agent -f
+```
+
+Or run directly from GitHub:
+```bash
+bash <(curl -s https://raw.githubusercontent.com/Zantac150/Proxmox-Scripts/main/sentry/install-sentry-lxc.sh)
+```
+
+Installer options: `--id`, `--name`, `--storage`, `--disk`, `--cores`, `--memory`, `--net-bridge`, `--ip`, `--gw`, `--password`, `--config-file`, `--source-dir`, `--start`
+
+### Sentry Modules
+
+#### `modules/baseline.py`
+
+Collects host and per-container metrics every cycle and stores them in a local SQLite database.  After `baseline_days` (default 7) of history has accumulated, it fits a scikit-learn **StandardScaler → Isolation Forest** pipeline as a multi-variate anomaly detector.  Models are pickled to SQLite so they survive restarts.
+
+Metrics collected:
+- Host: CPU load (1/5/15 min), memory usage, per-interface RX/TX bytes, disk I/O counters
+- Proxmox node: overall CPU %, memory %, per-guest CPU/memory/network via the PVE API RRD endpoint
+
+#### `modules/anomaly_detector.py`
+
+Scores each incoming metric snapshot through the trained Isolation Forest.  Anomaly score < −0.4 → `critical`; < 0 → `warning`.  Identifies the top-contributing features via the standard scaler to help explain the alert.  Falls back to static thresholds (CPU > 85/95 %, memory > 90/95 %) when ML history is insufficient.
+
+#### `modules/network_monitor.py`
+
+- **Suspicious ports** — alerts immediately if a process opens a port from a known bad-actor list (4444, 1337, 31337, etc.)
+- **New external hosts** — every established connection to a first-seen external IP is flagged for review
+- **Traffic spikes** — per-interface byte-rate deltas; warns at > 500 MB/s sustained
+
+#### `modules/vuln_scanner.py`
+
+Wraps [Trivy](https://trivy.dev/) to scan:
+- Each running LXC container's rootfs at `/var/lib/lxc/<id>/rootfs`
+- The Proxmox host OS packages
+
+Scans run on a configurable schedule (`scan_interval_seconds`, default 24 h) to avoid continuous I/O load.  Findings are filtered by `min_severity` (default `HIGH`) and `ignore_unfixed`.
+
+#### `modules/config_auditor.py`
+
+Connects to the Proxmox API and scores each LXC/VM configuration from 0–100.  Issues flagged:
+
+| Check | Deduction | Severity |
+|-------|-----------|----------|
+| Privileged LXC container | −30 | critical |
+| Host device pass-through | −25 | critical |
+| Nesting without AppArmor | −10 | warning |
+| No firewall rules | −15 | warning |
+
+Guests scoring below `min_score_threshold` (default 70) trigger an alert.
+
+#### `modules/recommender.py`
+
+Maps every finding type to a prioritised, human-readable remediation recommendation that is included in every alert.
+
+### Sentry Alerting
+
+#### `alerting/alertmanager.py`
+
+Central dispatcher with:
+- **Deduplication** — identical alerts within `dedup_seconds` (default 1 h) are suppressed
+- **Severity filter** — only alerts at or above `min_alert_severity` (default `warning`) are sent
+- **Pluggable channels** — add any channel by dropping `<name>_channel.py` in `alerting/channels/` implementing the `AlertChannel` ABC
+
+#### Alert Channels
+
+| Channel | Platform |
+|---------|----------|
+| `email` | Any SMTP server (plain / STARTTLS / TLS) |
+| `pushover` | [Pushover](https://pushover.net/) mobile push |
+| `webhook` | Slack, Discord, Microsoft Teams, or any JSON HTTP endpoint |
+| `syslog` | Local rsyslog / journald, or remote UDP/TCP syslog (Graylog, Splunk, Loki) |
+
+Enable channels in `sentry.conf`:
+```ini
+[alerts]
+channels = email,pushover,webhook,syslog
+```
 
 ---
 
