@@ -186,14 +186,14 @@ class AnomalyDetector:
         issues = []
 
         cpu = metrics.get("pve.cpu_pct", metrics.get("host.load1", -1))
-        if 0 <= cpu > 95:
+        if cpu >= 0 and cpu > 95:
             issues.append({
                 "type":        "threshold",
                 "severity":    "critical",
                 "title":       f"CPU usage critical ({cpu:.1f}%)",
                 "description": "Node CPU utilisation exceeded 95%.",
             })
-        elif 0 <= cpu > 85:
+        elif cpu >= 0 and cpu > 85:
             issues.append({
                 "type":        "threshold",
                 "severity":    "warning",
@@ -202,14 +202,14 @@ class AnomalyDetector:
             })
 
         mem = metrics.get("pve.mem_used_pct", metrics.get("host.mem_used_pct", -1))
-        if 0 <= mem > 95:
+        if mem >= 0 and mem > 95:
             issues.append({
                 "type":        "threshold",
                 "severity":    "critical",
                 "title":       f"Memory usage critical ({mem:.1f}%)",
                 "description": "Node memory utilisation exceeded 95%.",
             })
-        elif 0 <= mem > 90:
+        elif mem >= 0 and mem > 90:
             issues.append({
                 "type":        "threshold",
                 "severity":    "warning",
