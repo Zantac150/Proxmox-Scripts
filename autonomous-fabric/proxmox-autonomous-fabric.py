@@ -305,8 +305,8 @@ def create_actions(intent_goals: List[Dict[str, Any]], state: Dict[str, Any], po
         elif name == "maximize_availability":
             for node_name, risk in node_risk.items():
                 if risk["risk_level"] in {"high", "critical"}:
-                    fake_action = {"vm_id": workloads[0].get("id") if workloads else None, "title": f"Pre-evacuate workloads from {node_name}"}
-                    blast_score, zone = blast.score(fake_action, state)
+                    evacuation_action = {"vm_id": workloads[0].get("id") if workloads else None, "title": f"Pre-evacuate workloads from {node_name}"}
+                    blast_score, zone = blast.score(evacuation_action, state)
                     actions.append(
                         PlannedAction(
                             action_id=f"A{action_num:03d}",
@@ -326,8 +326,8 @@ def create_actions(intent_goals: List[Dict[str, Any]], state: Dict[str, Any], po
 
         elif name == "reduce_exposure":
             for vm in workloads:
-                fake_action = {"vm_id": vm.get("id"), "title": f"Patch and harden {vm.get('name', vm.get('id'))}"}
-                blast_score, zone = blast.score(fake_action, state)
+                patch_action = {"vm_id": vm.get("id"), "title": f"Patch and harden {vm.get('name', vm.get('id'))}"}
+                blast_score, zone = blast.score(patch_action, state)
                 actions.append(
                     PlannedAction(
                         action_id=f"A{action_num:03d}",
