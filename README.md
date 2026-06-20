@@ -453,6 +453,14 @@ channels = email,pushover,webhook,syslog
 
 ---
 
+## Integration Testing
+
+A full host-level integration checklist is available in
+[`INTEGRATION-CHECKLIST.md`](INTEGRATION-CHECKLIST.md).  It covers step-by-step
+verification of every script and module against real PVE binaries (`pct`, `qm`,
+`pvesh`, `pvesm`, etc.) and documents the pre-flight checks that run automatically
+in the sandbox CI environment.
+
 ## Contributing
 
 Pull requests and issues are welcome. If you have scripts that help manage a Proxmox environment, feel free to open a PR.
