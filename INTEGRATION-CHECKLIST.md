@@ -366,7 +366,7 @@ import configparser
 cfg = configparser.ConfigParser()
 cfg.read('/opt/sentry/config/sentry.conf')
 v = VulnScanner(cfg)
-print('vuln scanner initialised, next_scan_due:', v._next_scan)
+print('vuln scanner initialized, next_scan_due:', v._next_scan)
 "
 
 # --- Alert channels (dry-run) ---
