@@ -207,6 +207,110 @@
           }
         ]
       }
+    },
+    {
+      "captured_at": "2026-06-20T02:47:44.865978+00:00",
+      "state": {
+        "nodes": [
+          {
+            "name": "pve-a",
+            "energy_zone": "zone-a",
+            "thermal_index": 0.3,
+            "cpu_pct": 42,
+            "memory_pct": 55,
+            "history": {
+              "cpu": [
+                35,
+                36,
+                38,
+                40,
+                42
+              ],
+              "temp_c": [
+                54,
+                55,
+                56,
+                57,
+                58
+              ],
+              "io_wait": [
+                2,
+                2,
+                3,
+                3,
+                4
+              ],
+              "memory_pct": [
+                49,
+                50,
+                52,
+                54,
+                55
+              ]
+            }
+          },
+          {
+            "name": "pve-b",
+            "energy_zone": "zone-b",
+            "thermal_index": 0.9,
+            "cpu_pct": 81,
+            "memory_pct": 78,
+            "history": {
+              "cpu": [
+                65,
+                68,
+                72,
+                76,
+                81
+              ],
+              "temp_c": [
+                62,
+                66,
+                71,
+                74,
+                80
+              ],
+              "io_wait": [
+                8,
+                9,
+                10,
+                13,
+                17
+              ],
+              "memory_pct": [
+                66,
+                68,
+                71,
+                74,
+                78
+              ]
+            }
+          }
+        ],
+        "workloads": [
+          {
+            "id": "101",
+            "name": "payroll-api",
+            "sla": "critical",
+            "criticality": "critical",
+            "zone": "zone-a",
+            "dependencies": [
+              "db-201",
+              "redis-301"
+            ]
+          },
+          {
+            "id": "102",
+            "name": "batch-worker",
+            "sla": "standard",
+            "criticality": "standard",
+            "zone": "zone-b",
+            "dependencies": [
+              "queue-401"
+            ]
+          }
+        ]
+      }
     }
   ]
 }
