@@ -1,0 +1,10 @@
+{
+  "max_blast_radius": 78,
+  "min_confidence": 0.62,
+  "blocked_actions": [],
+  "tariffs": {
+    "default": 0.18,
+    "zone-a": 0.14,
+    "zone-b": 0.24
+  }
+}

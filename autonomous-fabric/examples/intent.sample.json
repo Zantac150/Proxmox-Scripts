@@ -1,0 +1,8 @@
+{
+  "text": "Minimize cost tonight, guarantee HA for payroll workloads, and reduce security exposure.",
+  "goals": [
+    {"name": "minimize_cost", "priority": "high"},
+    {"name": "maximize_availability", "priority": "critical"},
+    {"name": "reduce_exposure", "priority": "high"}
+  ]
+}
