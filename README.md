@@ -19,6 +19,7 @@ A collection of Bash scripts and Python modules for automating, managing, and **
 | [`monitoring/check-node-health.sh`](#node-health-check) | Host observability checks for disk, memory, load, storage, and core services |
 | [`monitoring/check-network-health.sh`](#network-health-check) | Validate routing, link state, DNS resolution, and external connectivity |
 | [`monitoring/recover-services.sh`](#service-recovery) | Detect unhealthy Proxmox services and restart them automatically |
+| [`autonomous-fabric/proxmox-autonomous-fabric.py`](#proxmox-autonomous-fabric-paf) | Intent-based autonomous planning with replay, digital twin simulation, and trust-scored execution plans |
 
 ### Proxmox Sentry – AI Security Monitoring
 
@@ -287,6 +288,45 @@ Options: `--services`, `--max-retries`, `--dry-run`, `--check-only`
 
 ---
 
+### Proxmox Autonomous Fabric (PAF)
+
+**`autonomous-fabric/proxmox-autonomous-fabric.py`**
+
+PAF is an experimental orchestration engine that turns operator intent into policy-gated execution plans with built-in replay simulation and explainable trust outputs.
+
+Implemented framework capabilities:
+
+- **Intent-based operations** from structured goals or free-text intent
+- **Time-travel replay** from stored cluster state snapshots
+- **Predictive failure genome** scoring from node telemetry drift
+- **Live economic scheduler** based on tariff zone, thermal index, and SLA
+- **Blast-radius containment** scoring and containment zones per action
+- **Self-authoring runbooks** from generated decision history
+- **Cross-layer digital twin** simulation of risk/performance deltas
+- **Human trust layer** with why-now, risk, fallback, and confidence narratives
+
+```bash
+# Generate an autonomous plan payload from sample files
+python3 autonomous-fabric/proxmox-autonomous-fabric.py orchestrate \
+  --intent-file autonomous-fabric/examples/intent.sample.json \
+  --state-file autonomous-fabric/examples/cluster-state.sample.json \
+  --policy-file autonomous-fabric/examples/policy.sample.json \
+  --capture-snapshot \
+  --history-file autonomous-fabric/examples/history.sample.json \
+  --output-json autonomous-fabric/examples/plan-output.sample.json
+
+# Build a markdown runbook from execution history
+python3 autonomous-fabric/proxmox-autonomous-fabric.py runbook \
+  --history-file autonomous-fabric/examples/history.sample.json
+```
+
+Subcommands:
+- `orchestrate` — generate trust-scored action plans (optionally snapshot + replay)
+- `capture-snapshot` — append point-in-time state to snapshot store
+- `runbook` — generate markdown runbook from history events
+
+---
+
 ## Proxmox Sentry
 
 **`sentry/`** — AI-powered, Darktrace-inspired security monitoring and predictive alerting for Proxmox VE home labs.
@@ -412,6 +452,14 @@ channels = email,pushover,webhook,syslog
 ```
 
 ---
+
+## Integration Testing
+
+A full host-level integration checklist is available in
+[`INTEGRATION-CHECKLIST.md`](INTEGRATION-CHECKLIST.md).  It covers step-by-step
+verification of every script and module against real PVE binaries (`pct`, `qm`,
+`pvesh`, `pvesm`, etc.) and documents the pre-flight checks that run automatically
+in the sandbox CI environment.
 
 ## Contributing
 
