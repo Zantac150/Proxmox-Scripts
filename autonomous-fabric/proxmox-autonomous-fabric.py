@@ -173,6 +173,25 @@ class EconomicScheduler:
 
 class BlastRadiusModel:
     def score(self, action: Dict[str, Any], state: Dict[str, Any]) -> Tuple[float, str]:
+        node_name = action.get("node_name")
+        if node_name:
+            node_map = {n.get("name"): n for n in state.get("nodes", [])}
+            workloads = state.get("workloads", [])
+            impacted = [
+                vm
+                for vm in workloads
+                if vm.get("node") == node_name
+                or vm.get("host") == node_name
+                or vm.get("current_node") == node_name
+            ]
+            impacted_count = len(impacted)
+            dep_count = sum(len(vm.get("dependencies", [])) for vm in impacted)
+            critical_count = sum(1 for vm in impacted if vm.get("criticality", "standard") == "critical")
+            cluster_load = statistics.mean([n.get("cpu_pct", 0) for n in state.get("nodes", [])] or [0])
+            score = min(100.0, impacted_count * 8 + dep_count * 4 + critical_count * 15 + cluster_load * 0.25)
+            zone = node_map.get(node_name, {}).get("energy_zone", "zone-a")
+            return round(score, 2), zone
+
         vm_map = {vm.get("id"): vm for vm in state.get("workloads", [])}
         target_vm = vm_map.get(action.get("vm_id"), {})
 
@@ -305,7 +324,7 @@ def create_actions(intent_goals: List[Dict[str, Any]], state: Dict[str, Any], po
         elif name == "maximize_availability":
             for node_name, risk in node_risk.items():
                 if risk["risk_level"] in {"high", "critical"}:
-                    evacuation_action = {"vm_id": workloads[0].get("id") if workloads else None, "title": f"Pre-evacuate workloads from {node_name}"}
+                    evacuation_action = {"node_name": node_name, "title": f"Pre-evacuate workloads from {node_name}"}
                     blast_score, zone = blast.score(evacuation_action, state)
                     actions.append(
                         PlannedAction(
